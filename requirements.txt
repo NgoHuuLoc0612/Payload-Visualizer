@@ -1,0 +1,20 @@
+fastapi
+uvicorn[standard]
+websockets
+orjson
+msgpack
+aiohttp
+pydantic
+pydantic-settings
+structlog
+rich
+aiofiles
+python-multipart
+httpx
+numpy
+pandas
+scipy
+protobuf
+pyyaml
+tomli; python_version < "3.11"
+tomli

@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Payload Visualizer</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@400;600;700;800&family=Space+Grotesk:wght@300;400;500;600&display=swap" rel="stylesheet" />
+
+  <!-- CDN Libraries -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/material-darker.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/foldgutter.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.min.css" />
+
+  <link rel="stylesheet" href="/static/css/app.css" />
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     APP SHELL
+════════════════════════════════════════════════════════════════════════════ -->
+<div id="app">
+
+  <!-- ── Sidebar ─────────────────────────────────────────────────────────── -->
+  <aside id="sidebar">
+    <div class="sidebar-logo">
+      <span class="logo-mark">⬡</span>
+      <span class="logo-text">Payload<br><em>Visualizer</em></span>
+    </div>
+
+    <nav class="sidebar-nav">
+      <a class="nav-item active" data-view="analyzer" title="Analyzer">
+        <svg viewBox="0 0 24 24"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18"/></svg>
+        <span>Analyzer</span>
+      </a>
+      <a class="nav-item" data-view="realtime" title="Live Stream">
+        <svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        <span>Live Stream</span>
+        <span class="badge" id="ws-badge">●</span>
+      </a>
+      <a class="nav-item" data-view="diff" title="Diff">
+        <svg viewBox="0 0 24 24"><path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>
+        <span>Diff</span>
+      </a>
+      <a class="nav-item" data-view="transform" title="Transform">
+        <svg viewBox="0 0 24 24"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+        <span>Transform</span>
+      </a>
+      <a class="nav-item" data-view="history" title="History">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span>History</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="ws-status" id="ws-status-dot">
+        <span class="dot"></span>
+        <span class="label">Disconnected</span>
+      </div>
+      <div class="theme-toggle" id="theme-toggle" title="Toggle theme">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── Main Content ────────────────────────────────────────────────────── -->
+  <main id="main">
+
+    <!-- ── ANALYZER VIEW ───────────────────────────────────────────────── -->
+    <section class="view active" id="view-analyzer">
+      <div class="view-header">
+        <h1>Payload Analyzer</h1>
+        <div class="header-actions">
+          <select id="format-select" class="select-pill">
+            <option value="auto">⚡ Auto-detect</option>
+            <option value="json">JSON</option>
+            <option value="xml">XML / SOAP</option>
+            <option value="msgpack">MessagePack</option>
+            <option value="jwt">JWT</option>
+            <option value="graphql">GraphQL</option>
+            <option value="csv">CSV / TSV</option>
+            <option value="yaml">YAML</option>
+            <option value="toml">TOML</option>
+            <option value="protobuf">Protobuf</option>
+            <option value="binary">Binary</option>
+            <option value="har">HAR</option>
+          </select>
+          <label class="btn btn-ghost" for="file-input">
+            <svg viewBox="0 0 24 24" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Upload
+          </label>
+          <input type="file" id="file-input" style="display:none" />
+          <button class="btn btn-ghost" id="btn-sample">Sample</button>
+          <button class="btn btn-primary" id="btn-parse">
+            <svg viewBox="0 0 24 24" width="14" height="14"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Analyze
+          </button>
+        </div>
+      </div>
+
+      <div class="analyzer-body">
+        <!-- Left: Editor -->
+        <div class="panel editor-panel">
+          <div class="panel-header">
+            <span class="panel-title">Input</span>
+            <div class="panel-actions">
+              <button class="icon-btn" id="btn-format-pretty" title="Prettify">⇥</button>
+              <button class="icon-btn" id="btn-clear" title="Clear">✕</button>
+              <button class="icon-btn" id="btn-copy-input" title="Copy">⎘</button>
+            </div>
+          </div>
+          <div id="editor-container"></div>
+          <div class="editor-footer">
+            <span id="editor-stats">0 chars · 0 lines</span>
+            <span id="detected-format" class="format-badge"></span>
+          </div>
+        </div>
+
+        <!-- Right: Results -->
+        <div class="panel results-panel" id="results-panel">
+          <div class="results-placeholder" id="results-placeholder">
+            <div class="placeholder-icon">⬡</div>
+            <p>Paste a payload and click <strong>Analyze</strong></p>
+            <p class="hint">Supports JSON · XML · JWT · GraphQL · MsgPack · CSV · YAML · TOML · Protobuf · Binary · HAR</p>
+          </div>
+
+          <div id="results-content" style="display:none">
+            <!-- Stats bar -->
+            <div class="stats-bar" id="stats-bar">
+              <div class="stat-chip"><label>Format</label><span id="r-format">—</span></div>
+              <div class="stat-chip"><label>Size</label><span id="r-size">—</span></div>
+              <div class="stat-chip"><label>Fields</label><span id="r-fields">—</span></div>
+              <div class="stat-chip"><label>Depth</label><span id="r-depth">—</span></div>
+              <div class="stat-chip"><label>Parse</label><span id="r-parse-time">—</span></div>
+              <div class="stat-chip"><label>Entropy</label><span id="r-entropy">—</span></div>
+            </div>
+
+            <!-- Anomalies -->
+            <div id="anomaly-bar" class="anomaly-bar" style="display:none"></div>
+
+            <!-- Result tabs -->
+            <div class="result-tabs">
+              <button class="rtab active" data-rtab="tree">🌲 Tree</button>
+              <button class="rtab" data-rtab="table">⊞ Table</button>
+              <button class="rtab" data-rtab="schema">📐 Schema</button>
+              <button class="rtab" data-rtab="pretty">{ } Pretty</button>
+              <button class="rtab" data-rtab="chart">◑ Chart</button>
+              <button class="rtab" data-rtab="hex">⬡ Hex</button>
+              <button class="rtab" data-rtab="meta">⋯ Meta</button>
+            </div>
+
+            <div class="rtab-content">
+              <div class="rtab-pane active" id="rtab-tree">
+                <div id="tree-container"></div>
+              </div>
+              <div class="rtab-pane" id="rtab-table">
+                <div id="table-container"></div>
+              </div>
+              <div class="rtab-pane" id="rtab-schema">
+                <div id="schema-container"></div>
+              </div>
+              <div class="rtab-pane" id="rtab-pretty">
+                <div id="pretty-container"></div>
+              </div>
+              <div class="rtab-pane" id="rtab-chart">
+                <div class="chart-grid">
+                  <div class="chart-card">
+                    <h4>Type Distribution</h4>
+                    <canvas id="chart-types" height="220"></canvas>
+                  </div>
+                  <div class="chart-card">
+                    <h4>Field Depth Histogram</h4>
+                    <canvas id="chart-depth" height="220"></canvas>
+                  </div>
+                  <div class="chart-card">
+                    <h4>Null vs Non-null</h4>
+                    <canvas id="chart-null" height="220"></canvas>
+                  </div>
+                  <div class="chart-card">
+                    <h4>Size Breakdown</h4>
+                    <canvas id="chart-size" height="220"></canvas>
+                  </div>
+                </div>
+              </div>
+              <div class="rtab-pane" id="rtab-hex">
+                <pre id="hex-container" class="hex-dump"></pre>
+              </div>
+              <div class="rtab-pane" id="rtab-meta">
+                <div id="meta-container"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── REALTIME VIEW ──────────────────────────────────────────────── -->
+    <section class="view" id="view-realtime">
+      <div class="view-header">
+        <h1>Live Stream <span class="live-badge">● LIVE</span></h1>
+        <div class="header-actions">
+          <label class="inline-label">Interval
+            <input type="range" id="rt-interval" min="100" max="2000" step="50" value="250" />
+            <span id="rt-interval-val">250ms</span>
+          </label>
+          <label class="inline-label">Batch
+            <input type="range" id="rt-batch" min="5" max="100" step="5" value="20" />
+            <span id="rt-batch-val">20</span>
+          </label>
+          <button class="btn btn-ghost" id="btn-rt-pause">⏸ Pause</button>
+          <button class="btn btn-ghost" id="btn-rt-clear">Clear</button>
+        </div>
+      </div>
+
+      <!-- KPI Row -->
+      <div class="kpi-row">
+        <div class="kpi-card" id="kpi-throughput">
+          <div class="kpi-value">—</div>
+          <div class="kpi-label">Requests/sec</div>
+          <canvas class="kpi-spark" id="spark-throughput"></canvas>
+        </div>
+        <div class="kpi-card" id="kpi-latency">
+          <div class="kpi-value">—</div>
+          <div class="kpi-label">Avg Latency (ms)</div>
+          <canvas class="kpi-spark" id="spark-latency"></canvas>
+        </div>
+        <div class="kpi-card" id="kpi-errors">
+          <div class="kpi-value">—</div>
+          <div class="kpi-label">Error Rate</div>
+          <canvas class="kpi-spark" id="spark-errors"></canvas>
+        </div>
+        <div class="kpi-card" id="kpi-total">
+          <div class="kpi-value">—</div>
+          <div class="kpi-label">Total Processed</div>
+          <canvas class="kpi-spark" id="spark-total"></canvas>
+        </div>
+        <div class="kpi-card" id="kpi-memory">
+          <div class="kpi-value">—</div>
+          <div class="kpi-label">Memory (MB)</div>
+          <canvas class="kpi-spark" id="spark-memory"></canvas>
+        </div>
+        <div class="kpi-card" id="kpi-cpu">
+          <div class="kpi-value">—</div>
+          <div class="kpi-label">CPU %</div>
+          <canvas class="kpi-spark" id="spark-cpu"></canvas>
+        </div>
+      </div>
+
+      <!-- Charts row -->
+      <div class="rt-charts-row">
+        <div class="rt-chart-card wide">
+          <h4>Latency Timeline</h4>
+          <canvas id="rt-chart-latency" height="160"></canvas>
+        </div>
+        <div class="rt-chart-card wide">
+          <h4>Throughput Timeline</h4>
+          <canvas id="rt-chart-throughput" height="160"></canvas>
+        </div>
+        <div class="rt-chart-card">
+          <h4>Format Distribution</h4>
+          <canvas id="rt-chart-formats" height="200"></canvas>
+        </div>
+        <div class="rt-chart-card">
+          <h4>Status Codes</h4>
+          <canvas id="rt-chart-status" height="200"></canvas>
+        </div>
+      </div>
+
+      <!-- Live feed table -->
+      <div class="panel rt-feed-panel">
+        <div class="panel-header">
+          <span class="panel-title">Event Feed</span>
+          <span id="rt-event-count" class="badge-count">0 events</span>
+        </div>
+        <div class="rt-feed-table-wrap">
+          <table class="rt-feed-table">
+            <thead>
+              <tr>
+                <th>#</th><th>Time</th><th>Method</th><th>Path</th>
+                <th>Format</th><th>Size</th><th>Latency</th><th>Status</th><th>Anomalies</th>
+              </tr>
+            </thead>
+            <tbody id="rt-feed-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── DIFF VIEW ──────────────────────────────────────────────────── -->
+    <section class="view" id="view-diff">
+      <div class="view-header">
+        <h1>Payload Diff</h1>
+        <div class="header-actions">
+          <select id="diff-format-select" class="select-pill">
+            <option value="json">JSON</option>
+            <option value="xml">XML</option>
+            <option value="yaml">YAML</option>
+          </select>
+          <button class="btn btn-primary" id="btn-diff">Compare</button>
+        </div>
+      </div>
+      <div class="diff-body">
+        <div class="panel">
+          <div class="panel-header"><span class="panel-title">Left (A)</span></div>
+          <div id="diff-editor-left"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><span class="panel-title">Right (B)</span></div>
+          <div id="diff-editor-right"></div>
+        </div>
+      </div>
+      <div class="panel diff-result-panel" id="diff-result" style="display:none">
+        <div class="panel-header"><span class="panel-title">Changes</span><span id="diff-change-count" class="badge-count"></span></div>
+        <div id="diff-result-body"></div>
+      </div>
+    </section>
+
+    <!-- ── TRANSFORM VIEW ─────────────────────────────────────────────── -->
+    <section class="view" id="view-transform">
+      <div class="view-header">
+        <h1>Transform</h1>
+        <div class="header-actions">
+          <select id="tx-from" class="select-pill">
+            <option value="json">JSON → </option>
+            <option value="xml">XML → </option>
+            <option value="yaml">YAML → </option>
+            <option value="csv">CSV → </option>
+            <option value="toml">TOML → </option>
+          </select>
+          <select id="tx-to" class="select-pill">
+            <option value="json">JSON</option>
+            <option value="yaml">YAML</option>
+            <option value="toml">TOML</option>
+            <option value="csv">CSV</option>
+            <option value="msgpack">MsgPack</option>
+          </select>
+          <button class="btn btn-primary" id="btn-transform">Transform</button>
+          <button class="btn btn-ghost" id="btn-tx-download">Download</button>
+        </div>
+      </div>
+      <div class="diff-body">
+        <div class="panel">
+          <div class="panel-header"><span class="panel-title">Source</span></div>
+          <div id="tx-editor-src"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><span class="panel-title">Output</span></div>
+          <div id="tx-editor-out"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── HISTORY VIEW ─────────────────────────────────────────────── -->
+    <section class="view" id="view-history">
+      <div class="view-header">
+        <h1>Analysis History</h1>
+        <div class="header-actions">
+          <input type="search" class="search-input" id="history-search" placeholder="Search…" />
+          <button class="btn btn-ghost" id="btn-history-clear">Clear</button>
+          <button class="btn btn-ghost" id="btn-history-export">Export JSON</button>
+        </div>
+      </div>
+      <div id="history-grid" class="history-grid"></div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ── Toast container ─────────────────────────────────────────────────────── -->
+<div id="toast-container"></div>
+
+<!-- ── Loading overlay ─────────────────────────────────────────────────────── -->
+<div id="loading-overlay" style="display:none">
+  <div class="loader-ring"></div>
+</div>
+
+<!-- ═══════════════════════════════ SCRIPTS ═══════════════════════════════ -->
+<!-- CodeMirror -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/xml/xml.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/yaml/yaml.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/toml/toml.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/foldcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/foldgutter.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/brace-fold.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/xml-fold.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/searchcursor.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/javascript-hint.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/display/autorefresh.min.js"></script>
+
+<!-- Chart.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+<!-- D3.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+
+<!-- Lodash -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
+
+<!-- Day.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dayjs/1.11.10/dayjs.min.js"></script>
+
+<!-- Fuse.js (fuzzy search) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/7.0.0/fuse.min.js"></script>
+
+<!-- highlight.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" />
+
+<!-- Main app -->
+<script src="/static/js/app.js"></script>
+</body>
+</html>
