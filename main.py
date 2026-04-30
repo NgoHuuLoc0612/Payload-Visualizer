@@ -1,5 +1,5 @@
 """
-Payload Visualizer — Enterprise-grade multi-format payload analysis platform.
+Payload Visualizer — Multi-format payload analysis platform.
 Supports JSON, XML, CBOR, MsgPack, Protobuf, GraphQL, JWT, MQTT, AMQP, gRPC.
 """
 
